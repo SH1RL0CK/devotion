@@ -21,8 +21,8 @@
         "git",
         "workflow"
     ],
-    "author": "",
-    "license": "ISC",
+    "author": "SH1RL0CK",
+    "license": "MIT",
     "packageManager": "pnpm@10.14.0",
     "dependencies": {
         "@inquirer/editor": "^4.2.17",
