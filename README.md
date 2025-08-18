@@ -30,16 +30,31 @@ Your Notion database should have the following properties:
 
 ## 🛠️ Installation
 
-Install Devotion globally using npm:
+Clone the repository and build the project:
 
 ```bash
-npm install -g devotion
+git clone https://github.com/SH1RL0CK/devotion.git
+cd devotion
+pnpm install
+pnpm build
 ```
 
-Or using pnpm:
+Install globally for system-wide usage:
 
 ```bash
-pnpm add -g devotion
+npm install -g .
+```
+
+After global installation, use the CLI directly:
+
+```bash
+devotion [command]
+```
+
+Or run directly without global installation:
+
+```bash
+node dist/index.js [command]
 ```
 
 ## ⚙️ Configuration
