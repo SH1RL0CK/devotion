@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { Command } from "commander";
+import inquirer from "inquirer";
 import {
     DEFAULT_UNKNOWN_ERROR,
     MSG_COULD_NOT_DETERMINE_BRANCH,
@@ -34,6 +35,21 @@ import { extractTicketIdFromBranchName } from "../utils.js";
 
 const localConfigService = new LocalConfigService();
 const globalConfigService = new GlobalConfigService();
+
+async function promptForPrDescription(
+    defaultDescription: string = ""
+): Promise<string> {
+    const answer = await inquirer.prompt([
+        {
+            type: "input" as const,
+            name: "description" as const,
+            message: "PR description:",
+            default: defaultDescription,
+        },
+    ]);
+
+    return answer.description;
+}
 
 async function mrMain(): Promise<void> {
     // Check if project is initialized
@@ -116,6 +132,9 @@ async function mrMain(): Promise<void> {
             )
         );
 
+        // Get authenticated user for assignee
+        const authenticatedUser = await githubService.getAuthenticatedUser();
+
         // Check if PR already exists
         const existingPR = await githubService.checkIfPullRequestExists(
             repoInfo.owner,
@@ -148,9 +167,20 @@ async function mrMain(): Promise<void> {
             return;
         }
 
+        // Ask for PR description
+        const description = await promptForPrDescription(ticket.title);
+
         // Prepare PR data
-        const prTitle = `${ticketId}: ${ticket.title}`;
-        const prBody = `**Ticket ID:** ${ticketId}\n**Title:** ${ticket.title}`;
+        const prTitle = description
+            ? `${ticketId}: ${description}`
+            : `${ticketId}: ${ticket.title}`;
+
+        // Create Notion link for PR body
+        const notionTicketUrl = `https://notion.so/${ticket.id.replace(
+            /-/g,
+            ""
+        )}`;
+        const prBody = `[${ticketId}: ${ticket.title}](${notionTicketUrl})`;
 
         // Create Pull Request
         console.log(chalk.blue(MSG_CREATING_PR));
@@ -167,6 +197,22 @@ async function mrMain(): Promise<void> {
 
         console.log(chalk.green(`${MSG_OPENED_PR}${pullRequest.title}`));
         console.log(chalk.blue(`${MSG_PR_URL}${pullRequest.url}`));
+
+        // Assign authenticated user to the PR
+        if (authenticatedUser) {
+            await githubService.assignUserToPullRequest(
+                repoInfo.owner,
+                repoInfo.repo,
+                pullRequest.number,
+                [authenticatedUser]
+            );
+        }
+
+        // Update the Notion ticket with the GitHub Pull Request URL
+        await notionService.updateTicketGitHubPullRequest(
+            ticket.id,
+            pullRequest.url
+        );
 
         // Update ticket status to "In review"
         console.log(chalk.blue(MSG_UPDATING_TICKET_STATUS));
@@ -193,9 +239,9 @@ async function mrMain(): Promise<void> {
     }
 }
 
-export function registerMrCommand(program: Command): void {
+export function registerPrCommand(program: Command): void {
     program
-        .command("mr")
+        .command("pr")
         .description("Open a Pull Request for the current ticket")
         .action(mrMain);
 }

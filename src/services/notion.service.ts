@@ -6,6 +6,7 @@ import {
     DEFAULT_UNTITLED_DATABASE,
     NOTION_PROPERTY_DEVELOPMENT,
     NOTION_PROPERTY_ENTWICKLUNG,
+    NOTION_PROPERTY_GITHUB_PULL_REQUEST,
     NOTION_PROPERTY_STATUS,
     NOTION_PROPERTY_TYPE,
     NOTION_TYPE_CHILD_DATABASE,
@@ -226,6 +227,30 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to update ticket status: ${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
+                }`
+            );
+        }
+    }
+
+    async updateTicketGitHubPullRequest(
+        ticketId: string,
+        pullRequestUrl: string
+    ): Promise<void> {
+        try {
+            await this.client.pages.update({
+                page_id: ticketId,
+                properties: {
+                    [NOTION_PROPERTY_GITHUB_PULL_REQUEST]: {
+                        url: pullRequestUrl,
+                    },
+                },
+            });
+        } catch (error) {
+            throw new Error(
+                `Failed to update ticket GitHub Pull Request URL: ${
                     error instanceof Error
                         ? error.message
                         : DEFAULT_UNKNOWN_ERROR

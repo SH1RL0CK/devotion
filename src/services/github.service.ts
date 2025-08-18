@@ -64,6 +64,16 @@ export class GitHubService {
         }
     }
 
+    async getAuthenticatedUser(): Promise<string | null> {
+        try {
+            const response = await this.octokit.rest.users.getAuthenticated();
+            return response.data.login;
+        } catch (error) {
+            console.error("Error getting authenticated user:", error);
+            return null;
+        }
+    }
+
     async createPullRequest(
         owner: string,
         repo: string,
@@ -92,6 +102,25 @@ export class GitHubService {
                         : DEFAULT_UNKNOWN_ERROR
                 }`
             );
+        }
+    }
+
+    async assignUserToPullRequest(
+        owner: string,
+        repo: string,
+        pullNumber: number,
+        assignees: string[]
+    ): Promise<void> {
+        try {
+            await this.octokit.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: pullNumber,
+                assignees,
+            });
+        } catch (error) {
+            console.error("Error assigning users to PR:", error);
+            // Don't throw here, assignment failure shouldn't break PR creation
         }
     }
 

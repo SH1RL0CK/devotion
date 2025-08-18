@@ -21,6 +21,7 @@ export const NOTION_PROPERTY_STATUS = "Status";
 export const NOTION_PROPERTY_DEVELOPMENT = "Development";
 export const NOTION_PROPERTY_ENTWICKLUNG = "Entwicklung";
 export const NOTION_PROPERTY_TYPE = "Type";
+export const NOTION_PROPERTY_GITHUB_PULL_REQUEST = "GitHub Pull Request";
 
 // Notion property types
 export const NOTION_TYPE_TITLE = "title";
