@@ -1,7 +1,33 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import inquirer from "inquirer";
-import { DEFAULT_DEVELOPMENT_BRANCH } from "../constants.js";
+import {
+    DEFAULT_DEVELOPMENT_BRANCH,
+    DEFAULT_UNKNOWN_ERROR,
+    MSG_ANALYZING_TICKETS_DB,
+    MSG_CURRENT_PROJECT_CONFIG,
+    MSG_EDIT_PROJECT_CONFIG,
+    MSG_FAILED_READ_GLOBAL_CONFIG,
+    MSG_FAILED_READ_PROJECT_CONFIG,
+    MSG_FAILED_UPDATE_CONFIG,
+    MSG_FETCHING_PROJECTS,
+    MSG_FINDING_TICKETS_DB,
+    MSG_GLOBAL_CONFIG_NOT_FOUND,
+    MSG_INITIALIZATION_FAILED,
+    MSG_INITIALIZING_PROJECT,
+    MSG_INIT_COMPLETE,
+    MSG_INIT_EDIT_HELP,
+    MSG_INIT_STATUS_HELP,
+    MSG_LEAVE_BLANK_TO_KEEP,
+    MSG_NO_IN_PROGRESS_PROJECTS,
+    MSG_NO_PROJECT_CONFIG,
+    MSG_NO_TICKETS_DB_FOUND,
+    MSG_NO_UNIQUE_ID_PREFIX,
+    MSG_PROJECT_ALREADY_INITIALIZED,
+    MSG_PROJECT_CONFIG_UPDATED,
+    PROMPT_DEVELOPMENT_BRANCH,
+    PROMPT_SELECT_PROJECT,
+} from "../constants.js";
 import { LocalConfig } from "../models/config.js";
 import { NotionProject } from "../models/notion.js";
 import { GlobalConfigService } from "../services/global-config.service.js";
@@ -23,7 +49,7 @@ async function promptForProjectSelection(
         {
             type: "list" as const,
             name: "projectId" as const,
-            message: "Select a project:",
+            message: PROMPT_SELECT_PROJECT,
             choices,
         },
     ]);
@@ -36,7 +62,7 @@ async function promptForDevelopmentBranch(): Promise<string> {
         {
             type: "input" as const,
             name: "developmentBranch" as const,
-            message: "Development branch name:",
+            message: PROMPT_DEVELOPMENT_BRANCH,
             default: DEFAULT_DEVELOPMENT_BRANCH,
         },
     ]);
@@ -48,52 +74,38 @@ async function initMain(): Promise<void> {
     const configExists = await localConfigService.exists();
 
     if (configExists) {
-        console.log(chalk.blue("ℹ️  Project is already initialized!"));
-        console.log(
-            chalk.blue(
-                "   Use 'devotion init status' to view current configuration"
-            )
-        );
-        console.log(
-            chalk.blue("   Use 'devotion init edit' to modify configuration")
-        );
+        console.log(chalk.blue(MSG_PROJECT_ALREADY_INITIALIZED));
+        console.log(chalk.blue(MSG_INIT_STATUS_HELP));
+        console.log(chalk.blue(MSG_INIT_EDIT_HELP));
         return;
     }
 
     // Check if global config exists
     const globalConfigExists = await globalConfigService.exists();
     if (!globalConfigExists) {
-        console.log(
-            chalk.red(
-                "❌ Global configuration not found. Run 'devotion setup' first."
-            )
-        );
+        console.log(chalk.red(MSG_GLOBAL_CONFIG_NOT_FOUND));
         return;
     }
 
     const globalConfig = await globalConfigService.read();
     if (!globalConfig) {
-        console.log(chalk.red("❌ Failed to read global configuration."));
+        console.log(chalk.red(MSG_FAILED_READ_GLOBAL_CONFIG));
         return;
     }
 
-    console.log(chalk.blue("ℹ️  Initializing project configuration..."));
+    console.log(chalk.blue(MSG_INITIALIZING_PROJECT));
 
     try {
         const notionService = new NotionService(globalConfig.notionApiKey);
 
         // Fetch in-progress projects
-        console.log(chalk.blue("   Fetching projects from Notion..."));
+        console.log(chalk.blue(MSG_FETCHING_PROJECTS));
         const projects = await notionService.getInProgressProjects(
             globalConfig.notionProjectsDbId
         );
 
         if (projects.length === 0) {
-            console.log(
-                chalk.yellow(
-                    "⚠️  No projects with status '🏗 In progress' found."
-                )
-            );
+            console.log(chalk.yellow(MSG_NO_IN_PROGRESS_PROJECTS));
             return;
         }
 
@@ -104,7 +116,7 @@ async function initMain(): Promise<void> {
         )!;
 
         // Get tickets database ID from Development/Entwicklung relation
-        console.log(chalk.blue("   Finding tickets database..."));
+        console.log(chalk.blue(MSG_FINDING_TICKETS_DB));
         let ticketsDatabaseId = await notionService.getRelationDatabaseId(
             selectedProjectId,
             "Development"
@@ -118,27 +130,19 @@ async function initMain(): Promise<void> {
         }
 
         if (!ticketsDatabaseId) {
-            console.log(
-                chalk.red(
-                    "❌ Could not find tickets database in Development or Entwicklung relation."
-                )
-            );
+            console.log(chalk.red(MSG_NO_TICKETS_DB_FOUND));
             return;
         }
 
         // Get ticket prefix from unique_id property
-        console.log(chalk.blue("   Analyzing tickets database schema..."));
+        console.log(chalk.blue(MSG_ANALYZING_TICKETS_DB));
         const ticketsDatabase = await notionService.getDatabaseSchema(
             ticketsDatabaseId
         );
         const ticketPrefix = notionService.findUniqueIdPrefix(ticketsDatabase);
 
         if (!ticketPrefix) {
-            console.log(
-                chalk.red(
-                    "❌ Could not find unique_id property with prefix in tickets database."
-                )
-            );
+            console.log(chalk.red(MSG_NO_UNIQUE_ID_PREFIX));
             return;
         }
 
@@ -154,15 +158,17 @@ async function initMain(): Promise<void> {
         };
 
         await localConfigService.write(localConfig);
-        console.log(chalk.green("✅ Project initialization complete!"));
+        console.log(chalk.green(MSG_INIT_COMPLETE));
         console.log(chalk.green(`   Project: ${selectedProject.title}`));
         console.log(chalk.green(`   Ticket prefix: ${ticketPrefix}`));
         console.log(chalk.green(`   Development branch: ${developmentBranch}`));
     } catch (error) {
         console.log(
             chalk.red(
-                `❌ Initialization failed: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                `${MSG_INITIALIZATION_FAILED}${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             )
         );
@@ -174,21 +180,17 @@ async function initStatus(): Promise<void> {
     const configExists = await localConfigService.exists();
 
     if (!configExists) {
-        console.log(
-            chalk.red(
-                "❌ No project configuration found. Run 'devotion init' first."
-            )
-        );
+        console.log(chalk.red(MSG_NO_PROJECT_CONFIG));
         return;
     }
 
     const config = await localConfigService.read();
     if (!config) {
-        console.log(chalk.red("❌ Failed to read project configuration file."));
+        console.log(chalk.red(MSG_FAILED_READ_PROJECT_CONFIG));
         return;
     }
 
-    console.log(chalk.blue("ℹ️  Current project configuration:"));
+    console.log(chalk.blue(MSG_CURRENT_PROJECT_CONFIG));
     console.log(`   Project ID: ${config.projectId}`);
     console.log(`   Tickets Database ID: ${config.ticketsDatabaseId}`);
     console.log(`   Ticket Prefix: ${config.ticketPrefix}`);
@@ -199,22 +201,18 @@ async function initEdit(): Promise<void> {
     const configExists = await localConfigService.exists();
 
     if (!configExists) {
-        console.log(
-            chalk.red(
-                "❌ No project configuration found. Run 'devotion init' first."
-            )
-        );
+        console.log(chalk.red(MSG_NO_PROJECT_CONFIG));
         return;
     }
 
     const currentConfig = await localConfigService.read();
     if (!currentConfig) {
-        console.log(chalk.red("❌ Failed to read project configuration file."));
+        console.log(chalk.red(MSG_FAILED_READ_PROJECT_CONFIG));
         return;
     }
 
-    console.log(chalk.blue("ℹ️  Edit project configuration"));
-    console.log(chalk.blue("   Leave blank to keep current value:\n"));
+    console.log(chalk.blue(MSG_EDIT_PROJECT_CONFIG));
+    console.log(chalk.blue(MSG_LEAVE_BLANK_TO_KEEP));
 
     const questions = [
         {
@@ -242,14 +240,14 @@ async function initEdit(): Promise<void> {
         };
 
         await localConfigService.write(updatedConfig);
-        console.log(
-            chalk.green("✅ Project configuration updated successfully!")
-        );
+        console.log(chalk.green(MSG_PROJECT_CONFIG_UPDATED));
     } catch (error) {
         console.log(
             chalk.red(
-                `❌ Failed to update configuration: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                `${MSG_FAILED_UPDATE_CONFIG}${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             )
         );

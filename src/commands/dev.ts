@@ -1,6 +1,25 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import inquirer from "inquirer";
+import {
+    DEFAULT_UNKNOWN,
+    DEFAULT_UNKNOWN_ERROR,
+    MSG_CHECKING_BRANCHES,
+    MSG_FAILED_READ_CONFIG,
+    MSG_GLOBAL_CONFIG_NOT_FOUND,
+    MSG_LOADING_TICKETS,
+    MSG_NOT_GIT_REPOSITORY,
+    MSG_NO_EXISTING_BRANCH,
+    MSG_NO_TICKETS_FOUND,
+    MSG_PROJECT_NOT_INITIALIZED,
+    MSG_PULLING_CHANGES,
+    MSG_PUSHING_BRANCH,
+    MSG_READY_TO_DEVELOP,
+    MSG_TICKET_NO_ID,
+    MSG_UPDATING_TICKET_STATUS,
+    TICKET_STATUS_IN_PROGRESS,
+    VALIDATION_DESCRIPTION_EMPTY,
+} from "../constants.js";
 import { NotionTicket } from "../models/notion.js";
 import { GitService } from "../services/git.service.js";
 import { GlobalConfigService } from "../services/global-config.service.js";
@@ -15,7 +34,7 @@ async function promptForTicketSelection(
     tickets: NotionTicket[]
 ): Promise<string> {
     const choices = tickets.map((ticket) => ({
-        name: `${ticket.ticketId || "Unknown"} - ${ticket.title} (${
+        name: `${ticket.ticketId || DEFAULT_UNKNOWN} - ${ticket.title} (${
             ticket.status
         })`,
         value: ticket.id,
@@ -47,7 +66,7 @@ async function promptForBranchDescription(
             default: suggestedDescription,
             validate: (input: string) => {
                 if (!input.trim()) {
-                    return "Description cannot be empty";
+                    return VALIDATION_DESCRIPTION_EMPTY;
                 }
                 return true;
             },
@@ -61,15 +80,13 @@ async function devMain(): Promise<void> {
     // Check if project is initialized
     const configExists = await localConfigService.exists();
     if (!configExists) {
-        console.log(
-            chalk.red("❌ Project not initialized. Run 'devotion init' first.")
-        );
+        console.log(chalk.red(MSG_PROJECT_NOT_INITIALIZED));
         return;
     }
 
     const localConfig = await localConfigService.read();
     if (!localConfig) {
-        console.log(chalk.red("❌ Failed to read project configuration."));
+        console.log(chalk.red(MSG_FAILED_READ_CONFIG));
         return;
     }
 
@@ -77,22 +94,18 @@ async function devMain(): Promise<void> {
     const gitService = new GitService();
     const isGitRepo = await gitService.isGitRepository();
     if (!isGitRepo) {
-        console.log(chalk.red("❌ Current directory is not a git repository."));
+        console.log(chalk.red(MSG_NOT_GIT_REPOSITORY));
         return;
     }
 
     // Get global config for Notion API
     const globalConfig = await globalConfigService.read();
     if (!globalConfig) {
-        console.log(
-            chalk.red(
-                "❌ Global configuration not found. Run 'devotion setup' first."
-            )
-        );
+        console.log(chalk.red(MSG_GLOBAL_CONFIG_NOT_FOUND));
         return;
     }
 
-    console.log(chalk.blue("ℹ️  Loading tickets from Notion..."));
+    console.log(chalk.blue(MSG_LOADING_TICKETS));
 
     try {
         const notionService = new NotionService(globalConfig.notionApiKey);
@@ -103,11 +116,7 @@ async function devMain(): Promise<void> {
         );
 
         if (tickets.length === 0) {
-            console.log(
-                chalk.yellow(
-                    "⚠️  No tickets found with status '📋 Backlog' or '🏗 In progress'."
-                )
-            );
+            console.log(chalk.yellow(MSG_NO_TICKETS_FOUND));
             return;
         }
 
@@ -116,9 +125,7 @@ async function devMain(): Promise<void> {
         const selectedTicket = tickets.find((t) => t.id === selectedTicketId)!;
 
         if (!selectedTicket.ticketId) {
-            console.log(
-                chalk.red("❌ Selected ticket does not have a ticket ID.")
-            );
+            console.log(chalk.red(MSG_TICKET_NO_ID));
             return;
         }
 
@@ -129,7 +136,7 @@ async function devMain(): Promise<void> {
         );
 
         // Check if a branch already exists for this ticket
-        console.log(chalk.blue("ℹ️  Checking for existing branches..."));
+        console.log(chalk.blue(MSG_CHECKING_BRANCHES));
         const existingBranch = await gitService.findBranchWithTicketId(
             selectedTicket.ticketId
         );
@@ -140,18 +147,14 @@ async function devMain(): Promise<void> {
                 chalk.blue(`ℹ️  Found existing branch: ${existingBranch}`)
             );
             await gitService.switchToBranch(existingBranch);
-            console.log(chalk.blue("ℹ️  Pulling latest changes..."));
+            console.log(chalk.blue(MSG_PULLING_CHANGES));
             await gitService.pullLatestChanges();
             console.log(
                 chalk.green(`✅ Switched to existing branch ${existingBranch}`)
             );
         } else {
             // Create new branch
-            console.log(
-                chalk.blue(
-                    "ℹ️  No existing branch found. Creating new branch..."
-                )
-            );
+            console.log(chalk.blue(MSG_NO_EXISTING_BRANCH));
 
             // Generate branch prefix and suggested description
             const branchPrefix = buildBranchPrefix(
@@ -186,7 +189,7 @@ async function devMain(): Promise<void> {
                 localConfig.developmentBranch
             );
 
-            console.log(chalk.blue("ℹ️  Pushing branch to remote..."));
+            console.log(chalk.blue(MSG_PUSHING_BRANCH));
             await gitService.pushBranchToRemote(branchName);
 
             console.log(
@@ -197,31 +200,33 @@ async function devMain(): Promise<void> {
         }
 
         // Update ticket status to "In progress" if it's not already
-        if (selectedTicket.status !== "🏗 In progress") {
-            console.log(chalk.blue("ℹ️  Updating ticket status..."));
+        if (selectedTicket.status !== TICKET_STATUS_IN_PROGRESS) {
+            console.log(chalk.blue(MSG_UPDATING_TICKET_STATUS));
             await notionService.updateTicketStatus(
                 selectedTicket.id,
-                "🏗 In progress"
+                TICKET_STATUS_IN_PROGRESS
             );
             console.log(
                 chalk.blue(
-                    `ℹ️  Ticket ${selectedTicket.ticketId} is now 🏗 In progress`
+                    `ℹ️  Ticket ${selectedTicket.ticketId} is now ${TICKET_STATUS_IN_PROGRESS}`
                 )
             );
         } else {
             console.log(
                 chalk.blue(
-                    `ℹ️  Ticket ${selectedTicket.ticketId} is already 🏗 In progress`
+                    `ℹ️  Ticket ${selectedTicket.ticketId} is already ${TICKET_STATUS_IN_PROGRESS}`
                 )
             );
         }
 
-        console.log(chalk.green("✅ Ready to start development!"));
+        console.log(chalk.green(MSG_READY_TO_DEVELOP));
     } catch (error) {
         console.log(
             chalk.red(
                 `❌ Failed to start development: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             )
         );

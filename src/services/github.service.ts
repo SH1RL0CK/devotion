@@ -1,4 +1,17 @@
 import { Octokit } from "octokit";
+import {
+    DEFAULT_UNKNOWN_ERROR,
+    ERROR_CHECKING_EXISTING_PR,
+    ERROR_CREATE_PR,
+    ERROR_GETTING_REPO_INFO,
+    GIT_ENCODING,
+    GIT_REMOTE_COMMAND,
+    GITHUB_HTTPS_PATTERN,
+    GITHUB_HTTPS_PREFIX,
+    GITHUB_SSH_PATTERN,
+    GITHUB_SSH_PREFIX,
+    PR_STATE_OPEN,
+} from "../constants.js";
 
 export interface PullRequestData {
     title: string;
@@ -24,21 +37,17 @@ export class GitHubService {
         try {
             // Get the current repository information from git remote
             const { execSync } = await import("child_process");
-            const remoteUrl = execSync("git remote get-url origin", {
-                encoding: "utf8",
+            const remoteUrl = execSync(GIT_REMOTE_COMMAND, {
+                encoding: GIT_ENCODING,
             }).trim();
 
             // Parse GitHub URL to extract owner and repo
             // Supports both HTTPS and SSH formats
             let match;
-            if (remoteUrl.startsWith("https://github.com/")) {
-                match = remoteUrl.match(
-                    /https:\/\/github\.com\/([^\/]+)\/([^\/]+?)(?:\.git)?$/
-                );
-            } else if (remoteUrl.startsWith("git@github.com:")) {
-                match = remoteUrl.match(
-                    /git@github\.com:([^\/]+)\/([^\/]+?)(?:\.git)?$/
-                );
+            if (remoteUrl.startsWith(GITHUB_HTTPS_PREFIX)) {
+                match = remoteUrl.match(GITHUB_HTTPS_PATTERN);
+            } else if (remoteUrl.startsWith(GITHUB_SSH_PREFIX)) {
+                match = remoteUrl.match(GITHUB_SSH_PATTERN);
             }
 
             if (match) {
@@ -50,7 +59,7 @@ export class GitHubService {
 
             return null;
         } catch (error) {
-            console.error("Error getting repository info:", error);
+            console.error(ERROR_GETTING_REPO_INFO, error);
             return null;
         }
     }
@@ -77,8 +86,10 @@ export class GitHubService {
             };
         } catch (error) {
             throw new Error(
-                `Failed to create pull request: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                `${ERROR_CREATE_PR}${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             );
         }
@@ -96,7 +107,7 @@ export class GitHubService {
                 repo,
                 head: `${owner}:${head}`,
                 base,
-                state: "open",
+                state: PR_STATE_OPEN,
             });
 
             if (response.data.length > 0) {
@@ -110,7 +121,7 @@ export class GitHubService {
 
             return null;
         } catch (error) {
-            console.error("Error checking for existing PR:", error);
+            console.error(ERROR_CHECKING_EXISTING_PR, error);
             return null;
         }
     }

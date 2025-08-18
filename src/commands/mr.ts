@@ -1,5 +1,30 @@
 import chalk from "chalk";
 import { Command } from "commander";
+import {
+    DEFAULT_UNKNOWN_ERROR,
+    MSG_COULD_NOT_DETERMINE_BRANCH,
+    MSG_COULD_NOT_DETERMINE_REPO,
+    MSG_COULD_NOT_EXTRACT_TICKET_ID,
+    MSG_COULD_NOT_FIND_TICKET,
+    MSG_COULD_NOT_OPEN_PR,
+    MSG_CREATING_PR,
+    MSG_CURRENT_BRANCH,
+    MSG_EXTRACTED_TICKET_ID,
+    MSG_FAILED_READ_CONFIG,
+    MSG_FOUND_TICKET,
+    MSG_GLOBAL_CONFIG_NOT_FOUND,
+    MSG_NOT_GIT_REPOSITORY,
+    MSG_OPENED_PR,
+    MSG_PR_ALREADY_EXISTS,
+    MSG_PR_URL,
+    MSG_PROJECT_NOT_INITIALIZED,
+    MSG_PUSHING_CURRENT_BRANCH,
+    MSG_REPOSITORY_INFO,
+    MSG_TICKET_SET_TO_IN_REVIEW,
+    MSG_UPDATING_TICKET_STATUS,
+    MSG_UPDATING_TO_IN_REVIEW,
+    TICKET_STATUS_IN_REVIEW,
+} from "../constants.js";
 import { GitService } from "../services/git.service.js";
 import { GitHubService } from "../services/github.service.js";
 import { GlobalConfigService } from "../services/global-config.service.js";
@@ -14,15 +39,13 @@ async function mrMain(): Promise<void> {
     // Check if project is initialized
     const configExists = await localConfigService.exists();
     if (!configExists) {
-        console.log(
-            chalk.red("❌ Project not initialized. Run 'devotion init' first.")
-        );
+        console.log(chalk.red(MSG_PROJECT_NOT_INITIALIZED));
         return;
     }
 
     const localConfig = await localConfigService.read();
     if (!localConfig) {
-        console.log(chalk.red("❌ Failed to read project configuration."));
+        console.log(chalk.red(MSG_FAILED_READ_CONFIG));
         return;
     }
 
@@ -30,18 +53,14 @@ async function mrMain(): Promise<void> {
     const gitService = new GitService();
     const isGitRepo = await gitService.isGitRepository();
     if (!isGitRepo) {
-        console.log(chalk.red("❌ Current directory is not a git repository."));
+        console.log(chalk.red(MSG_NOT_GIT_REPOSITORY));
         return;
     }
 
     // Get global config for API keys
     const globalConfig = await globalConfigService.read();
     if (!globalConfig) {
-        console.log(
-            chalk.red(
-                "❌ Global configuration not found. Run 'devotion setup' first."
-            )
-        );
+        console.log(chalk.red(MSG_GLOBAL_CONFIG_NOT_FOUND));
         return;
     }
 
@@ -49,24 +68,20 @@ async function mrMain(): Promise<void> {
         // Get current branch
         const currentBranch = await gitService.getCurrentBranch();
         if (!currentBranch) {
-            console.log(chalk.red("❌ Could not determine current branch."));
+            console.log(chalk.red(MSG_COULD_NOT_DETERMINE_BRANCH));
             return;
         }
 
-        console.log(chalk.blue(`ℹ️  Current branch: ${currentBranch}`));
+        console.log(chalk.blue(`${MSG_CURRENT_BRANCH}${currentBranch}`));
 
         // Extract ticket ID from branch name
         const ticketId = extractTicketIdFromBranchName(currentBranch);
         if (!ticketId) {
-            console.log(
-                chalk.red(
-                    "❌ Could not extract ticket ID from branch name. Expected format: <prefix>/<TICKET_ID>_<description>"
-                )
-            );
+            console.log(chalk.red(MSG_COULD_NOT_EXTRACT_TICKET_ID));
             return;
         }
 
-        console.log(chalk.blue(`ℹ️  Extracted ticket ID: ${ticketId}`));
+        console.log(chalk.blue(`${MSG_EXTRACTED_TICKET_ID}${ticketId}`));
 
         // Find ticket in Notion
         const notionService = new NotionService(globalConfig.notionApiKey);
@@ -76,16 +91,14 @@ async function mrMain(): Promise<void> {
         );
 
         if (!ticket) {
-            console.log(
-                chalk.red(`❌ Could not find ticket with ID: ${ticketId}`)
-            );
+            console.log(chalk.red(`${MSG_COULD_NOT_FIND_TICKET}${ticketId}`));
             return;
         }
 
-        console.log(chalk.blue(`ℹ️  Found ticket: ${ticket.title}`));
+        console.log(chalk.blue(`${MSG_FOUND_TICKET}${ticket.title}`));
 
         // Push current branch to remote
-        console.log(chalk.blue("ℹ️  Pushing current branch to remote..."));
+        console.log(chalk.blue(MSG_PUSHING_CURRENT_BRANCH));
         await gitService.pushCurrentBranch();
 
         // Create GitHub service and get repository info
@@ -93,16 +106,14 @@ async function mrMain(): Promise<void> {
         const repoInfo = await githubService.getRepositoryInfo();
 
         if (!repoInfo) {
-            console.log(
-                chalk.red(
-                    "❌ Could not determine GitHub repository information."
-                )
-            );
+            console.log(chalk.red(MSG_COULD_NOT_DETERMINE_REPO));
             return;
         }
 
         console.log(
-            chalk.blue(`ℹ️  Repository: ${repoInfo.owner}/${repoInfo.repo}`)
+            chalk.blue(
+                `${MSG_REPOSITORY_INFO}${repoInfo.owner}/${repoInfo.repo}`
+            )
         );
 
         // Check if PR already exists
@@ -115,22 +126,23 @@ async function mrMain(): Promise<void> {
 
         if (existingPR) {
             console.log(
-                chalk.yellow(
-                    `⚠️  Pull request already exists: ${existingPR.url}`
-                )
+                chalk.yellow(`${MSG_PR_ALREADY_EXISTS}${existingPR.url}`)
             );
-            console.log(
-                chalk.blue(`ℹ️  Updating ticket status to In review...`)
-            );
+            console.log(chalk.blue(MSG_UPDATING_TO_IN_REVIEW));
 
             // Update ticket status to "In review" if not already
-            if (ticket.status !== "📋 In review") {
+            if (ticket.status !== TICKET_STATUS_IN_REVIEW) {
                 await notionService.updateTicketStatus(
                     ticket.id,
-                    "📋 In review"
+                    TICKET_STATUS_IN_REVIEW
                 );
                 console.log(
-                    chalk.blue(`ℹ️  Ticket ${ticketId} set to In review`)
+                    chalk.blue(
+                        MSG_TICKET_SET_TO_IN_REVIEW.replace(
+                            "${ticketId}",
+                            ticketId
+                        )
+                    )
                 );
             }
             return;
@@ -141,7 +153,7 @@ async function mrMain(): Promise<void> {
         const prBody = `**Ticket ID:** ${ticketId}\n**Title:** ${ticket.title}`;
 
         // Create Pull Request
-        console.log(chalk.blue("ℹ️  Creating pull request..."));
+        console.log(chalk.blue(MSG_CREATING_PR));
         const pullRequest = await githubService.createPullRequest(
             repoInfo.owner,
             repoInfo.repo,
@@ -153,18 +165,27 @@ async function mrMain(): Promise<void> {
             }
         );
 
-        console.log(chalk.green(`✅ Opened PR: ${pullRequest.title}`));
-        console.log(chalk.blue(`   URL: ${pullRequest.url}`));
+        console.log(chalk.green(`${MSG_OPENED_PR}${pullRequest.title}`));
+        console.log(chalk.blue(`${MSG_PR_URL}${pullRequest.url}`));
 
         // Update ticket status to "In review"
-        console.log(chalk.blue("ℹ️  Updating ticket status..."));
-        await notionService.updateTicketStatus(ticket.id, "📋 In review");
-        console.log(chalk.blue(`ℹ️  Ticket ${ticketId} set to In review`));
+        console.log(chalk.blue(MSG_UPDATING_TICKET_STATUS));
+        await notionService.updateTicketStatus(
+            ticket.id,
+            TICKET_STATUS_IN_REVIEW
+        );
+        console.log(
+            chalk.blue(
+                MSG_TICKET_SET_TO_IN_REVIEW.replace("${ticketId}", ticketId)
+            )
+        );
     } catch (error) {
         console.log(
             chalk.red(
-                `❌ Could not open PR: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                `${MSG_COULD_NOT_OPEN_PR}${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             )
         );

@@ -16,7 +16,6 @@ build/
 .tscache/
 
 # IDE
-.vscode/
 .idea/
 *.swp
 *.swo

@@ -1,5 +1,22 @@
 import { Client } from "@notionhq/client";
-import { PROJECT_STATUS_IN_PROGRESS } from "../constants.js";
+import {
+    DEFAULT_UNKNOWN_ERROR,
+    DEFAULT_UNKNOWN_STATUS,
+    DEFAULT_UNTITLED,
+    DEFAULT_UNTITLED_DATABASE,
+    NOTION_PROPERTY_DEVELOPMENT,
+    NOTION_PROPERTY_ENTWICKLUNG,
+    NOTION_PROPERTY_STATUS,
+    NOTION_PROPERTY_TYPE,
+    NOTION_TYPE_CHILD_DATABASE,
+    NOTION_TYPE_SELECT,
+    NOTION_TYPE_STATUS,
+    NOTION_TYPE_TITLE,
+    NOTION_TYPE_UNIQUE_ID,
+    PROJECT_STATUS_IN_PROGRESS,
+    TICKET_STATUS_BACKLOG,
+    TICKET_STATUS_IN_PROGRESS,
+} from "../constants.js";
 import {
     NotionDatabase,
     NotionProject,
@@ -18,7 +35,7 @@ export class NotionService {
             const response = await this.client.databases.query({
                 database_id: databaseId,
                 filter: {
-                    property: "Status",
+                    property: NOTION_PROPERTY_STATUS,
                     status: {
                         equals: PROJECT_STATUS_IN_PROGRESS,
                     },
@@ -31,7 +48,9 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to fetch projects: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             );
         }
@@ -51,7 +70,9 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to fetch database schema: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             );
         }
@@ -59,7 +80,10 @@ export class NotionService {
 
     findUniqueIdPrefix(database: NotionDatabase): string | null {
         for (const [key, property] of Object.entries(database.properties)) {
-            if (property.type === "unique_id" && property.unique_id?.prefix) {
+            if (
+                property.type === NOTION_TYPE_UNIQUE_ID &&
+                property.unique_id?.prefix
+            ) {
                 return property.unique_id.prefix;
             }
         }
@@ -70,10 +94,10 @@ export class NotionService {
         const properties = page.properties;
 
         // Extract title
-        let title = "Untitled";
+        let title = DEFAULT_UNTITLED;
         for (const [key, prop] of Object.entries(properties)) {
             if (
-                (prop as any).type === "title" &&
+                (prop as any).type === NOTION_TYPE_TITLE &&
                 (prop as any).title?.[0]?.plain_text
             ) {
                 title = (prop as any).title[0].plain_text;
@@ -81,24 +105,11 @@ export class NotionService {
             }
         }
 
-        // Extract development database ID from Development or Entwicklung relation
-        let developmentDbId: string | undefined;
-        const developmentProp =
-            properties.Development || properties.Entwicklung;
-        if (
-            developmentProp?.type === "relation" &&
-            developmentProp.relation?.[0]?.id
-        ) {
-            // We need to get the database ID from the relation, not the page ID
-            // This will be handled when we fetch the actual relation target
-            developmentDbId = developmentProp.relation[0].id;
-        }
-
         return {
             id: page.id,
             title,
             status: PROJECT_STATUS_IN_PROGRESS,
-            developmentDbId,
+            developmentDbId: undefined, // This will be populated by getRelationDatabaseId when needed
         };
     }
 
@@ -115,9 +126,12 @@ export class NotionService {
             // Look for child_database with title "Development" or "Entwicklung"
             for (const block of blocks.results) {
                 const typedBlock = block as any;
-                if (typedBlock.type === "child_database") {
+                if (typedBlock.type === NOTION_TYPE_CHILD_DATABASE) {
                     const title = typedBlock.child_database?.title;
-                    if (title === "Development" || title === "Entwicklung") {
+                    if (
+                        title === NOTION_PROPERTY_DEVELOPMENT ||
+                        title === NOTION_PROPERTY_ENTWICKLUNG
+                    ) {
                         return typedBlock.id;
                     }
                 }
@@ -140,15 +154,15 @@ export class NotionService {
                 filter: {
                     or: [
                         {
-                            property: "Status",
+                            property: NOTION_PROPERTY_STATUS,
                             status: {
-                                equals: "📋 Backlog",
+                                equals: TICKET_STATUS_BACKLOG,
                             },
                         },
                         {
-                            property: "Status",
+                            property: NOTION_PROPERTY_STATUS,
                             status: {
-                                equals: "🏗 In progress",
+                                equals: TICKET_STATUS_IN_PROGRESS,
                             },
                         },
                     ],
@@ -161,7 +175,9 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to fetch tickets: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             );
         }
@@ -187,7 +203,9 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to find ticket: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             );
         }
@@ -198,7 +216,7 @@ export class NotionService {
             await this.client.pages.update({
                 page_id: ticketId,
                 properties: {
-                    Status: {
+                    [NOTION_PROPERTY_STATUS]: {
                         status: {
                             name: status,
                         },
@@ -208,7 +226,9 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to update ticket status: ${
-                    error instanceof Error ? error.message : "Unknown error"
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
                 }`
             );
         }
@@ -218,10 +238,10 @@ export class NotionService {
         const properties = page.properties;
 
         // Extract title
-        let title = "Untitled";
+        let title = DEFAULT_UNTITLED;
         for (const [key, prop] of Object.entries(properties)) {
             if (
-                (prop as any).type === "title" &&
+                (prop as any).type === NOTION_TYPE_TITLE &&
                 (prop as any).title?.[0]?.plain_text
             ) {
                 title = (prop as any).title[0].plain_text;
@@ -230,28 +250,28 @@ export class NotionService {
         }
 
         // Extract status
-        let status = "Unknown";
+        let status = DEFAULT_UNKNOWN_STATUS;
         if (
-            properties.Status?.type === "status" &&
-            properties.Status.status?.name
+            properties[NOTION_PROPERTY_STATUS]?.type === NOTION_TYPE_STATUS &&
+            properties[NOTION_PROPERTY_STATUS].status?.name
         ) {
-            status = properties.Status.status.name;
+            status = properties[NOTION_PROPERTY_STATUS].status.name;
         }
 
         // Extract type
         let type: string | undefined;
         if (
-            properties.Type?.type === "select" &&
-            properties.Type.select?.name
+            properties[NOTION_PROPERTY_TYPE]?.type === NOTION_TYPE_SELECT &&
+            properties[NOTION_PROPERTY_TYPE].select?.name
         ) {
-            type = properties.Type.select.name;
+            type = properties[NOTION_PROPERTY_TYPE].select.name;
         }
 
         // Extract ticket ID from unique_id
         let ticketId: string | undefined;
         for (const [key, prop] of Object.entries(properties)) {
             if (
-                (prop as any).type === "unique_id" &&
+                (prop as any).type === NOTION_TYPE_UNIQUE_ID &&
                 (prop as any).unique_id?.number &&
                 (prop as any).unique_id?.prefix
             ) {
@@ -275,6 +295,6 @@ export class NotionService {
         if (database.title?.[0]?.plain_text) {
             return database.title[0].plain_text;
         }
-        return "Untitled Database";
+        return DEFAULT_UNTITLED_DATABASE;
     }
 }
