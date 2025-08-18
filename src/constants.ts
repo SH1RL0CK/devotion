@@ -15,6 +15,7 @@ export const PROJECT_STATUS_IN_PROGRESS = "🏗 In progress";
 export const TICKET_STATUS_BACKLOG = "📋 Backlog";
 export const TICKET_STATUS_IN_PROGRESS = "🏗 In progress";
 export const TICKET_STATUS_IN_REVIEW = "👀 In review";
+export const TICKET_STATUS_DONE = "🚀 Done";
 
 // Notion property names
 export const NOTION_PROPERTY_STATUS = "Status";
@@ -185,5 +186,20 @@ export const GITHUB_SSH_PATTERN =
 export const ERROR_GETTING_REPO_INFO = "Error getting repository info:";
 export const ERROR_CHECKING_EXISTING_PR = "Error checking for existing PR:";
 export const ERROR_CREATE_PR = "Failed to create pull request: ";
+
+// Finish command messages
+export const MSG_NO_CURRENT_BRANCH = "❌ Could not determine current branch";
+export const MSG_COULD_NOT_EXTRACT_TICKET_ID_FINISH =
+    "❌ Could not extract ticket ID from current branch";
+export const MSG_NO_OPEN_PR = "❌ No open pull request found for this branch";
+export const MSG_PR_NOT_MERGEABLE = "❌ PR not mergeable or checks failing";
+export const MSG_PR_MERGED_SUCCESS = "✅ PR merged (squash):";
+export const MSG_BRANCH_CLEANUP = "🧹 Deleted branch";
+export const MSG_SWITCHED_AND_PULLED = "ℹ️ Switched to";
+export const MSG_TICKET_UPDATED_DONE = "ℹ️ Ticket";
+export const MSG_SET_TO_DONE = "set to 🚀 Done";
+export const ERROR_MERGE_PR = "Failed to merge pull request: ";
+export const ERROR_DELETING_BRANCH = "Failed to delete branch: ";
+export const ERROR_UPDATING_TICKET = "Failed to update ticket status: ";
 
 export {};

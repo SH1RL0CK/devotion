@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import { registerDevCommand } from "./commands/dev.js";
+import { registerFinishCommand } from "./commands/finish.js";
 import { registerInitCommand } from "./commands/init.js";
 import { registerPrCommand } from "./commands/pr.js";
 import { registerSetupCommand } from "./commands/setup.js";
@@ -20,5 +21,6 @@ registerSetupCommand(program);
 registerInitCommand(program);
 registerDevCommand(program);
 registerPrCommand(program);
+registerFinishCommand(program);
 
 program.parse();

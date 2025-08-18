@@ -111,4 +111,12 @@ export class GitService {
             return false;
         }
     }
+
+    async deleteLocalBranch(branchName: string): Promise<void> {
+        await this.git.deleteLocalBranch(branchName, true); // force delete
+    }
+
+    async deleteRemoteBranch(branchName: string): Promise<void> {
+        await this.git.push("origin", `:${branchName}`);
+    }
 }

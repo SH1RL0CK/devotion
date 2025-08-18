@@ -12,19 +12,12 @@ import {
     GITHUB_SSH_PREFIX,
     PR_STATE_OPEN,
 } from "../constants.js";
-
-export interface PullRequestData {
-    title: string;
-    body: string;
-    head: string;
-    base: string;
-}
-
-export interface PullRequest {
-    number: number;
-    url: string;
-    title: string;
-}
+import {
+    CheckStatus,
+    PullRequest,
+    PullRequestData,
+    PullRequestDetails,
+} from "../models/github.js";
 
 export class GitHubService {
     private octokit: Octokit;
@@ -152,6 +145,159 @@ export class GitHubService {
         } catch (error) {
             console.error(ERROR_CHECKING_EXISTING_PR, error);
             return null;
+        }
+    }
+
+    async getPullRequestDetails(
+        owner: string,
+        repo: string,
+        pullNumber: number
+    ): Promise<PullRequestDetails | null> {
+        try {
+            const response = await this.octokit.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: pullNumber,
+            });
+
+            const pr = response.data;
+            return {
+                number: pr.number,
+                url: pr.html_url,
+                title: pr.title,
+                mergeable: pr.mergeable,
+                mergeable_state: pr.mergeable_state,
+                merged: pr.merged,
+                head: {
+                    ref: pr.head.ref,
+                    sha: pr.head.sha,
+                },
+                base: {
+                    ref: pr.base.ref,
+                },
+            };
+        } catch (error) {
+            console.error("Error getting PR details:", error);
+            return null;
+        }
+    }
+
+    async checkPullRequestStatus(
+        owner: string,
+        repo: string,
+        ref: string
+    ): Promise<CheckStatus> {
+        try {
+            // Check combined status
+            const statusResponse =
+                await this.octokit.rest.repos.getCombinedStatusForRef({
+                    owner,
+                    repo,
+                    ref,
+                });
+
+            // Check check runs
+            const checkRunsResponse = await this.octokit.rest.checks.listForRef(
+                {
+                    owner,
+                    repo,
+                    ref,
+                }
+            );
+
+            // If there are check runs, check their conclusions
+            if (checkRunsResponse.data.check_runs.length > 0) {
+                const failedRuns = checkRunsResponse.data.check_runs.filter(
+                    (run: any) =>
+                        run.conclusion === "failure" ||
+                        run.conclusion === "cancelled" ||
+                        run.conclusion === "timed_out"
+                );
+
+                const pendingRuns = checkRunsResponse.data.check_runs.filter(
+                    (run: any) =>
+                        run.status === "in_progress" ||
+                        run.status === "queued" ||
+                        run.conclusion === null
+                );
+
+                if (failedRuns.length > 0) {
+                    return { state: "failure", conclusion: "failure" };
+                }
+
+                if (pendingRuns.length > 0) {
+                    return { state: "pending", conclusion: null };
+                }
+
+                // All runs are either success, neutral, or skipped
+                return { state: "success", conclusion: "success" };
+            }
+
+            // Fall back to combined status - if no statuses, consider it success
+            const state = statusResponse.data.state;
+            if (
+                state === "pending" ||
+                state === "success" ||
+                statusResponse.data.statuses.length === 0
+            ) {
+                return {
+                    state:
+                        statusResponse.data.statuses.length === 0
+                            ? "success"
+                            : (state as "success" | "pending"),
+                };
+            }
+
+            return { state: state as "failure" | "error" };
+        } catch (error) {
+            console.error("Error checking PR status:", error);
+            return { state: "error" };
+        }
+    }
+
+    async mergePullRequest(
+        owner: string,
+        repo: string,
+        pullNumber: number,
+        commitTitle: string,
+        commitMessage?: string
+    ): Promise<void> {
+        try {
+            await this.octokit.rest.pulls.merge({
+                owner,
+                repo,
+                pull_number: pullNumber,
+                commit_title: commitTitle,
+                commit_message: commitMessage,
+                merge_method: "squash",
+            });
+        } catch (error) {
+            throw new Error(
+                `Failed to merge PR: ${
+                    error instanceof Error ? error.message : "Unknown error"
+                }`
+            );
+        }
+    }
+
+    async getPullRequestCommits(
+        owner: string,
+        repo: string,
+        pullNumber: number
+    ): Promise<string[]> {
+        try {
+            const response = await this.octokit.rest.pulls.listCommits({
+                owner,
+                repo,
+                pull_number: pullNumber,
+            });
+
+            return response.data
+                .map((commit: any) => commit.commit.message.split("\n")[0]) // Get first line of each commit
+                .filter((message: string) => message.trim().length > 0); // Filter empty messages
+        } catch (error) {
+            console.error("Error getting PR commits:", error);
+            return [];
         }
     }
 }
