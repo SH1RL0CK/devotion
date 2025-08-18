@@ -16,11 +16,21 @@ Before using Devotion, you'll need:
 
 1. **Notion API Key**: Create an integration at [Notion Developers](https://developers.notion.com/)
 2. **GitHub API Token**: Generate a personal access token in your [GitHub Settings](https://github.com/settings/tokens)
-3. **Notion Database**: A properly configured Notion database for your tickets/projects
+3. **Notion Database Structure**: A two-level database setup in Notion
 
 ### Notion Database Setup
 
-Your Notion database should have the following properties:
+Devotion uses a two-level database structure:
+
+#### 1. Projects Database (Main Database)
+
+This is the main database that contains all your projects. Configure it during global setup (`devotion setup`).
+
+#### 2. Tickets Databases (Per Project)
+
+Each project has its own tickets database, typically embedded as a child database within the project page. These are configured during project initialization (`devotion init`).
+
+**Tickets Database Properties:**
 
 - **Status** (Status type): For tracking ticket progress
 - **Type** (Select type): For categorizing tickets (e.g., Bug, Feature)
