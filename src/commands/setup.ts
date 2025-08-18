@@ -7,6 +7,7 @@ import {
     MSG_EDIT_CLI_CONFIG,
     MSG_FAILED_READ_SETUP_CONFIG,
     MSG_FAILED_UPDATE_SETUP_CONFIG,
+    MSG_FETCHING_USERS,
     MSG_LEAVE_BLANK_TO_KEEP,
     MSG_NO_SETUP_CONFIG,
     MSG_PROVIDE_CONFIG_VALUES,
@@ -22,12 +23,17 @@ import {
     PROMPT_NOTION_API_KEY,
     PROMPT_NOTION_API_KEY_EDIT,
     PROMPT_NOTION_DB_ID,
+    PROMPT_SELECT_USER,
+    PROMPT_USER_ID,
+    PROMPT_USER_ID_EDIT,
     VALIDATION_DATABASE_ID,
     VALIDATION_GITHUB_API_KEY,
     VALIDATION_NOTION_API_KEY,
+    VALIDATION_USER_ID,
 } from "../constants.js";
 import { GlobalConfig } from "../models/config.js";
 import { GlobalConfigService } from "../services/global-config.service.js";
+import { NotionService } from "../services/notion.service.js";
 
 const globalConfigService = new GlobalConfigService();
 
@@ -70,8 +76,68 @@ async function promptForConfig(): Promise<GlobalConfig> {
         },
     ];
 
-    const answers = await inquirer.prompt(questions);
-    return answers as GlobalConfig;
+    const basicAnswers = await inquirer.prompt(questions);
+
+    // Now fetch users using the Notion API key
+    console.log(chalk.blue(MSG_FETCHING_USERS));
+    try {
+        const notionService = new NotionService(basicAnswers.notionApiKey);
+        const users = await notionService.getUsers();
+
+        if (users.length === 0) {
+            throw new Error("No users found in your Notion workspace");
+        }
+
+        const userChoices = users.map((user) => ({
+            name: `${user.name}${user.email ? ` (${user.email})` : ""}`,
+            value: user.id,
+        }));
+
+        const userSelection = await inquirer.prompt([
+            {
+                type: "list" as const,
+                name: "userId" as const,
+                message: PROMPT_SELECT_USER,
+                choices: userChoices,
+            },
+        ]);
+
+        return {
+            ...basicAnswers,
+            userId: userSelection.userId,
+        } as GlobalConfig;
+    } catch (error) {
+        console.log(
+            chalk.red(
+                `❌ Failed to fetch users: ${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
+                }`
+            )
+        );
+
+        // Fallback to manual input
+        console.log(chalk.yellow("Falling back to manual user ID input..."));
+        const userIdQuestion = await inquirer.prompt([
+            {
+                type: "input" as const,
+                name: "userId" as const,
+                message: PROMPT_USER_ID,
+                validate: (value: string) => {
+                    if (!globalConfigService.validateUserId(value)) {
+                        return VALIDATION_USER_ID;
+                    }
+                    return true;
+                },
+            },
+        ]);
+
+        return {
+            ...basicAnswers,
+            userId: userIdQuestion.userId,
+        } as GlobalConfig;
+    }
 }
 
 async function setupMain(): Promise<void> {
@@ -125,6 +191,25 @@ async function setupStatus(): Promise<void> {
     console.log(`   Notion API Key: ${maskedConfig.notionApiKey}`);
     console.log(`   GitHub API Key: ${maskedConfig.githubApiKey}`);
     console.log(`   Notion Projects DB ID: ${maskedConfig.notionProjectsDbId}`);
+
+    // Try to get user name from Notion API
+    try {
+        const notionService = new NotionService(config.notionApiKey);
+        const users = await notionService.getUsers();
+        const currentUser = users.find((user) => user.id === config.userId);
+
+        if (currentUser) {
+            console.log(
+                `   User: ${currentUser.name}${
+                    currentUser.email ? ` (${currentUser.email})` : ""
+                }`
+            );
+        } else {
+            console.log(`   User ID: ${maskedConfig.userId}`);
+        }
+    } catch {
+        console.log(`   User ID: ${maskedConfig.userId}`);
+    }
 }
 
 async function setupEdit(): Promise<void> {
@@ -183,10 +268,84 @@ async function setupEdit(): Promise<void> {
                 return true;
             },
         },
+        {
+            type: "confirm" as const,
+            name: "changeUser" as const,
+            message: "Do you want to change the assigned user?",
+            default: false,
+        },
     ];
 
     try {
         const answers = await inquirer.prompt(questions);
+
+        let selectedUserId = currentConfig.userId;
+
+        if (answers.changeUser) {
+            // Use the current or updated Notion API key to fetch users
+            const notionApiKey =
+                answers.notionApiKey || currentConfig.notionApiKey;
+
+            console.log(chalk.blue(MSG_FETCHING_USERS));
+            try {
+                const notionService = new NotionService(notionApiKey);
+                const users = await notionService.getUsers();
+
+                if (users.length === 0) {
+                    throw new Error("No users found in your Notion workspace");
+                }
+
+                const userChoices = users.map((user) => ({
+                    name: `${user.name}${user.email ? ` (${user.email})` : ""}`,
+                    value: user.id,
+                }));
+
+                const userSelection = await inquirer.prompt([
+                    {
+                        type: "list" as const,
+                        name: "userId" as const,
+                        message: PROMPT_SELECT_USER,
+                        choices: userChoices,
+                    },
+                ]);
+
+                selectedUserId = userSelection.userId;
+            } catch (error) {
+                console.log(
+                    chalk.red(
+                        `❌ Failed to fetch users: ${
+                            error instanceof Error
+                                ? error.message
+                                : DEFAULT_UNKNOWN_ERROR
+                        }`
+                    )
+                );
+
+                // Fallback to manual input
+                console.log(
+                    chalk.yellow("Falling back to manual user ID input...")
+                );
+                const userIdQuestion = await inquirer.prompt([
+                    {
+                        type: "input" as const,
+                        name: "userId" as const,
+                        message: PROMPT_USER_ID_EDIT.replace(
+                            "{current}",
+                            currentConfig.userId
+                        ),
+                        validate: (value: string) => {
+                            if (value === "") return true; // Allow empty to keep current
+                            if (!globalConfigService.validateUserId(value)) {
+                                return VALIDATION_USER_ID;
+                            }
+                            return true;
+                        },
+                    },
+                ]);
+
+                selectedUserId = userIdQuestion.userId || currentConfig.userId;
+            }
+        }
 
         // Merge with current config, keeping current values for empty inputs
         const updatedConfig: GlobalConfig = {
@@ -194,6 +353,7 @@ async function setupEdit(): Promise<void> {
             githubApiKey: answers.githubApiKey || currentConfig.githubApiKey,
             notionProjectsDbId:
                 answers.notionProjectsDbId || currentConfig.notionProjectsDbId,
+            userId: selectedUserId,
         };
 
         await globalConfigService.write(updatedConfig);

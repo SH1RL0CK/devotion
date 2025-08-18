@@ -4,6 +4,7 @@ import {
     DEFAULT_UNKNOWN_STATUS,
     DEFAULT_UNTITLED,
     DEFAULT_UNTITLED_DATABASE,
+    NOTION_PROPERTY_ASSIGN,
     NOTION_PROPERTY_DEVELOPMENT,
     NOTION_PROPERTY_ENTWICKLUNG,
     NOTION_PROPERTY_GITHUB_PULL_REQUEST,
@@ -251,6 +252,55 @@ export class NotionService {
         } catch (error) {
             throw new Error(
                 `Failed to update ticket GitHub Pull Request URL: ${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
+                }`
+            );
+        }
+    }
+
+    async assignTicketToUser(ticketId: string, userId: string): Promise<void> {
+        try {
+            await this.client.pages.update({
+                page_id: ticketId,
+                properties: {
+                    [NOTION_PROPERTY_ASSIGN]: {
+                        people: [
+                            {
+                                id: userId,
+                            },
+                        ],
+                    },
+                },
+            });
+        } catch (error) {
+            throw new Error(
+                `Failed to assign ticket to user: ${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
+                }`
+            );
+        }
+    }
+
+    async getUsers(): Promise<
+        Array<{ id: string; name: string; email?: string }>
+    > {
+        try {
+            const response = await this.client.users.list({});
+
+            return response.results
+                .filter((user: any) => user.type === "person") // Only include person users, not bots
+                .map((user: any) => ({
+                    id: user.id,
+                    name: user.name || "Unknown User",
+                    email: user.person?.email,
+                }));
+        } catch (error) {
+            throw new Error(
+                `Failed to fetch users: ${
                     error instanceof Error
                         ? error.message
                         : DEFAULT_UNKNOWN_ERROR

@@ -4,6 +4,8 @@
 export const NOTION_API_KEY_PATTERN = /^ntn_[a-zA-Z0-9]+$/;
 export const GITHUB_API_KEY_PATTERN = /^ghp_[a-zA-Z0-9]+$/;
 export const NOTION_DATABASE_ID_PATTERN = /^[a-f0-9]{32}$/;
+export const NOTION_USER_ID_PATTERN =
+    /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
 // File paths
 export const GLOBAL_CONFIG_DIR = "~/.config";
@@ -23,6 +25,7 @@ export const NOTION_PROPERTY_DEVELOPMENT = "Development";
 export const NOTION_PROPERTY_ENTWICKLUNG = "Entwicklung";
 export const NOTION_PROPERTY_TYPE = "Type";
 export const NOTION_PROPERTY_GITHUB_PULL_REQUEST = "GitHub Pull Request";
+export const NOTION_PROPERTY_ASSIGN = "Assign";
 
 // Notion property types
 export const NOTION_TYPE_TITLE = "title";
@@ -48,8 +51,11 @@ export const MSG_FAILED_READ_CONFIG =
 export const MSG_NOT_GIT_REPOSITORY =
     "❌ Current directory is not a git repository.";
 export const MSG_GLOBAL_CONFIG_NOT_FOUND =
-    "❌ Global configuration not found. Run 'devotion setup' first.";
+    "❌ Global configuration not found. Please run 'devotion setup' first.";
+export const MSG_USER_ID_NOT_SET =
+    "❌ User ID not configured. Please run 'devotion setup edit' to set your user ID.";
 export const MSG_LOADING_TICKETS = "ℹ️  Loading tickets from Notion...";
+export const MSG_FETCHING_USERS = "ℹ️  Fetching users from Notion...";
 export const MSG_NO_TICKETS_FOUND =
     "⚠️  No tickets found with status '📋 Backlog' or '🏗 In progress'.";
 export const MSG_TICKET_NO_ID = "❌ Selected ticket does not have a ticket ID.";
@@ -59,6 +65,7 @@ export const MSG_NO_EXISTING_BRANCH =
     "ℹ️  No existing branch found. Creating new branch...";
 export const MSG_PUSHING_BRANCH = "ℹ️  Pushing branch to remote...";
 export const MSG_UPDATING_TICKET_STATUS = "ℹ️  Updating ticket status...";
+export const MSG_ASSIGNING_TICKET = "ℹ️  Assigning ticket to user...";
 export const MSG_READY_TO_DEVELOP = "✅ Ready to start development!";
 
 // Init command messages
@@ -148,6 +155,8 @@ export const VALIDATION_GITHUB_API_KEY =
     'Invalid GitHub API key. Must start with "ghp_".';
 export const VALIDATION_DATABASE_ID =
     "Invalid database ID. Must be exactly 32 hexadecimal characters.";
+export const VALIDATION_USER_ID =
+    "Invalid user ID. Must be a valid UUID format (e.g., d63757b9-c1eb-44f6-a1c9-762d34802471).";
 export const VALIDATION_DESCRIPTION_EMPTY = "Description cannot be empty";
 
 // Prompt messages
@@ -157,12 +166,14 @@ export const PROMPT_GITHUB_API_KEY =
     "Enter your GitHub API key (must start with ghp_):";
 export const PROMPT_NOTION_DB_ID =
     "Enter your Notion projects database ID (32 hexadecimal characters):";
+export const PROMPT_USER_ID =
+    "Enter your Notion user ID (UUID format, e.g., d63757b9-c1eb-44f6-a1c9-762d34802471):";
+export const PROMPT_SELECT_USER = "Select your user:";
 export const PROMPT_SELECT_PROJECT = "Select a project:";
 export const PROMPT_DEVELOPMENT_BRANCH = "Development branch name:";
 export const PROMPT_NOTION_API_KEY_EDIT = "Notion API key (current: ****):";
 export const PROMPT_GITHUB_API_KEY_EDIT = "GitHub API key (current: ****):";
-
-// Generic error messages
+export const PROMPT_USER_ID_EDIT = "User ID (current: {current}):"; // Generic error messages
 export const MSG_INITIALIZATION_FAILED = "❌ Initialization failed: ";
 export const MSG_FAILED_UPDATE_CONFIG = "❌ Failed to update configuration: ";
 

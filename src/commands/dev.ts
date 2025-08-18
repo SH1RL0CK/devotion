@@ -4,6 +4,7 @@ import inquirer from "inquirer";
 import {
     DEFAULT_UNKNOWN,
     DEFAULT_UNKNOWN_ERROR,
+    MSG_ASSIGNING_TICKET,
     MSG_CHECKING_BRANCHES,
     MSG_FAILED_READ_CONFIG,
     MSG_GLOBAL_CONFIG_NOT_FOUND,
@@ -17,6 +18,7 @@ import {
     MSG_READY_TO_DEVELOP,
     MSG_TICKET_NO_ID,
     MSG_UPDATING_TICKET_STATUS,
+    MSG_USER_ID_NOT_SET,
     TICKET_STATUS_IN_PROGRESS,
     VALIDATION_DESCRIPTION_EMPTY,
 } from "../constants.js";
@@ -102,6 +104,12 @@ async function devMain(): Promise<void> {
     const globalConfig = await globalConfigService.read();
     if (!globalConfig) {
         console.log(chalk.red(MSG_GLOBAL_CONFIG_NOT_FOUND));
+        return;
+    }
+
+    // Check if user ID is set
+    if (!globalConfig.userId) {
+        console.log(chalk.red(MSG_USER_ID_NOT_SET));
         return;
     }
 
@@ -218,6 +226,18 @@ async function devMain(): Promise<void> {
                 )
             );
         }
+
+        // Assign ticket to the configured user
+        console.log(chalk.blue(MSG_ASSIGNING_TICKET));
+        await notionService.assignTicketToUser(
+            selectedTicket.id,
+            globalConfig.userId
+        );
+        console.log(
+            chalk.blue(
+                `ℹ️  Ticket ${selectedTicket.ticketId} has been assigned to the configured user`
+            )
+        );
 
         console.log(chalk.green(MSG_READY_TO_DEVELOP));
     } catch (error) {
