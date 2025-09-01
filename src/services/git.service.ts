@@ -50,7 +50,6 @@ export class GitService {
         console.log(`No branch found containing ticket ID: ${ticketId}`);
         return null;
     }
-
     async switchToBranch(branchName: string): Promise<void> {
         // Check if branch exists locally
         const { local } = await this.getAllBranches();

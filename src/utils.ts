@@ -5,7 +5,8 @@ export function extractTicketIdFromBranchName(
 ): string | null {
     // Extract ticket ID between / and _
     // Example: feature/CAGW-19_page_projects -> CAGW-19
-    const match = branchName.match(/\/([^/_]+)_/);
+    // Specifically looking for pattern like prefix-number (e.g., CAGW-19)
+    const match = branchName.match(/\/([A-Za-z]+-\d+)_/);
     return match ? match[1] : null;
 }
 

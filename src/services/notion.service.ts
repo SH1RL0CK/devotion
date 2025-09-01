@@ -350,7 +350,7 @@ export class NotionService {
                 (prop as any).unique_id?.number &&
                 (prop as any).unique_id?.prefix
             ) {
-                ticketId = `${(prop as any).unique_id.prefix}${
+                ticketId = `${(prop as any).unique_id.prefix}-${
                     (prop as any).unique_id.number
                 }`;
                 break;
