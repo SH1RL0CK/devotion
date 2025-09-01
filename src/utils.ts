@@ -6,6 +6,7 @@ export function extractTicketIdFromBranchName(
     // Extract ticket ID between / and _
     // Example: feature/CAGW-19_page_projects -> CAGW-19
     // Specifically looking for pattern like prefix-number (e.g., CAGW-19)
+    // or pattern with underscores like TEST-6_description (TEST-6)
     const match = branchName.match(/\/([A-Za-z]+-\d+)_/);
     return match ? match[1] : null;
 }
@@ -48,6 +49,7 @@ export function buildBranchPrefix(
         }
     }
 
+    // Ensure we preserve the exact ticket ID including any hyphens
     return `${prefix}/${ticketId}_`;
 }
 
@@ -71,7 +73,7 @@ export function buildBranchName(
 export function sanitizeDescription(description: string): string {
     return description
         .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, "") // Remove special characters
+        .replace(/[^a-z0-9_\s]/g, "") // Remove special characters but keep underscores
         .replace(/\s+/g, "_") // Replace spaces with underscores
         .replace(/_{2,}/g, "_") // Replace multiple underscores with single
         .replace(/^_+|_+$/g, "") // Remove leading/trailing underscores

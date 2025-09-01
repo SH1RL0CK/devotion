@@ -182,6 +182,8 @@ async function devMain(): Promise<void> {
                 branchPrefix,
                 suggestedDescription
             );
+
+            // Ensure we preserve the exact format of the branch prefix which contains the ticket ID
             const branchName = `${branchPrefix}${description}`;
 
             console.log(chalk.blue(`ℹ️  Creating branch: ${branchName}`));

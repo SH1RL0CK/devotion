@@ -38,10 +38,11 @@ export class GitService {
         // Example: feature/CAGW-19_page_projects
         // We escape the ticket ID to handle special regex characters
         const escapedTicketId = ticketId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const searchPattern = new RegExp(`/${escapedTicketId}_`);
 
         for (const branch of allBranches) {
-            // Check if branch contains the ticket ID followed by underscore
-            if (branch.includes(`${ticketId}_`)) {
+            // Check if branch contains the exact ticket ID pattern (after a / and followed by _)
+            if (searchPattern.test(branch)) {
                 console.log(`Found matching branch: ${branch}`);
                 return branch;
             }
