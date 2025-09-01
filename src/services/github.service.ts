@@ -300,4 +300,72 @@ export class GitHubService {
             return [];
         }
     }
+
+    async checkIfLabelExists(
+        owner: string,
+        repo: string,
+        name: string
+    ): Promise<{ exists: boolean; id?: number }> {
+        try {
+            const response = await this.octokit.rest.issues.listLabelsForRepo({
+                owner,
+                repo,
+                per_page: 100,
+            });
+
+            const label = response.data.find(
+                (label: any) => label.name.toLowerCase() === name.toLowerCase()
+            );
+
+            return {
+                exists: !!label,
+                id: label ? label.id : undefined,
+            };
+        } catch (error) {
+            console.error("Error checking if label exists:", error);
+            return { exists: false };
+        }
+    }
+
+    async createLabel(
+        owner: string,
+        repo: string,
+        name: string,
+        color: string = "ededed" // Default light gray color if none provided
+    ): Promise<boolean> {
+        try {
+            await this.octokit.rest.issues.createLabel({
+                owner,
+                repo,
+                name,
+                color: color.replace(/^#/, ""), // Remove # if present
+            });
+
+            return true;
+        } catch (error) {
+            console.error("Error creating label:", error);
+            return false;
+        }
+    }
+
+    async addLabelToPullRequest(
+        owner: string,
+        repo: string,
+        pullNumber: number,
+        labels: string[]
+    ): Promise<boolean> {
+        try {
+            await this.octokit.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: pullNumber,
+                labels,
+            });
+
+            return true;
+        } catch (error) {
+            console.error("Error adding label to PR:", error);
+            return false;
+        }
+    }
 }

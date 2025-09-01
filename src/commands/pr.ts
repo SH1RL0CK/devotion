@@ -3,17 +3,20 @@ import { Command } from "commander";
 import inquirer from "inquirer";
 import {
     DEFAULT_UNKNOWN_ERROR,
+    MSG_ADDING_LABEL,
     MSG_COULD_NOT_DETERMINE_BRANCH,
     MSG_COULD_NOT_DETERMINE_REPO,
     MSG_COULD_NOT_EXTRACT_TICKET_ID,
     MSG_COULD_NOT_FIND_TICKET,
     MSG_COULD_NOT_OPEN_PR,
+    MSG_CREATING_LABEL,
     MSG_CREATING_PR,
     MSG_CURRENT_BRANCH,
     MSG_EXTRACTED_TICKET_ID,
     MSG_FAILED_READ_CONFIG,
     MSG_FOUND_TICKET,
     MSG_GLOBAL_CONFIG_NOT_FOUND,
+    MSG_LABEL_ADDED,
     MSG_NOT_GIT_REPOSITORY,
     MSG_OPENED_PR,
     MSG_PR_ALREADY_EXISTS,
@@ -24,6 +27,7 @@ import {
     MSG_TICKET_SET_TO_IN_REVIEW,
     MSG_UPDATING_TICKET_STATUS,
     MSG_UPDATING_TO_IN_REVIEW,
+    NOTION_PROPERTY_TYPE,
     TICKET_STATUS_IN_REVIEW,
 } from "../constants.js";
 import { GitService } from "../services/git.service.js";
@@ -197,6 +201,55 @@ async function mrMain(): Promise<void> {
 
         console.log(chalk.green(`${MSG_OPENED_PR}${pullRequest.title}`));
         console.log(chalk.blue(`${MSG_PR_URL}${pullRequest.url}`));
+
+        // Add ticket type as a label if available
+        if (ticket.type) {
+            console.log(chalk.blue(`${MSG_ADDING_LABEL}${ticket.type}`));
+
+            // Get the database schema to find the color for this type
+            let labelColor = "ededed"; // Default light gray color
+            try {
+                const databaseSchema = await notionService.getDatabaseSchema(localConfig.ticketsDatabaseId);
+                const typeColor = notionService.findSelectOptionColor(databaseSchema, NOTION_PROPERTY_TYPE, ticket.type);
+                
+                if (typeColor) {
+                    // Convert Notion color to GitHub color format
+                    const { convertNotionColorToGitHub } = await import("../utils.js");
+                    labelColor = convertNotionColorToGitHub(typeColor);
+                }
+            } catch (error) {
+                // If there's an error getting the color, we'll use the default
+                console.log(chalk.yellow(`Could not fetch color for type ${ticket.type}, using default`));
+            }
+
+            // Check if label already exists
+            const labelCheck = await githubService.checkIfLabelExists(
+                repoInfo.owner,
+                repoInfo.repo,
+                ticket.type
+            );
+
+            // Create label if it doesn't exist
+            if (!labelCheck.exists) {
+                console.log(chalk.blue(`${MSG_CREATING_LABEL}${ticket.type}`));
+                await githubService.createLabel(
+                    repoInfo.owner,
+                    repoInfo.repo,
+                    ticket.type,
+                    labelColor
+                );
+            }
+
+            // Add label to PR
+            await githubService.addLabelToPullRequest(
+                repoInfo.owner,
+                repoInfo.repo,
+                pullRequest.number,
+                [ticket.type]
+            );
+
+            console.log(chalk.blue(`${MSG_LABEL_ADDED}${ticket.type}`));
+        }
 
         // Assign authenticated user to the PR
         if (authenticatedUser) {

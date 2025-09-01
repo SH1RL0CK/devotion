@@ -198,6 +198,11 @@ export const ERROR_GETTING_REPO_INFO = "Error getting repository info:";
 export const ERROR_CHECKING_EXISTING_PR = "Error checking for existing PR:";
 export const ERROR_CREATE_PR = "Failed to create pull request: ";
 
+// Label messages
+export const MSG_ADDING_LABEL = "ℹ️  Adding label: ";
+export const MSG_CREATING_LABEL = "ℹ️  Creating label: ";
+export const MSG_LABEL_ADDED = "ℹ️  Label added: ";
+
 // Finish command messages
 export const MSG_NO_CURRENT_BRANCH = "❌ Could not determine current branch";
 export const MSG_COULD_NOT_EXTRACT_TICKET_ID_FINISH =

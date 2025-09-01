@@ -92,6 +92,26 @@ export class NotionService {
         return null;
     }
 
+    findSelectOptionColor(database: NotionDatabase, propertyName: string, optionName: string): string | null {
+        // Find the property by name
+        const property = database.properties[propertyName];
+        
+        // Check if it's a select property with options
+        if (property && property.type === NOTION_TYPE_SELECT && property.select?.options) {
+            // Find the option with matching name
+            const option = property.select.options.find(
+                option => option.name.toLowerCase() === optionName.toLowerCase()
+            );
+            
+            // Return the color if found
+            if (option) {
+                return option.color;
+            }
+        }
+        
+        return null;
+    }
+
     private mapPageToProject(page: any): NotionProject {
         const properties = page.properties;
 

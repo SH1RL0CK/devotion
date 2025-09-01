@@ -24,6 +24,15 @@ export interface NotionProperty {
     unique_id?: {
         prefix?: string;
     };
+    select?: {
+        options?: NotionSelectOption[];
+    };
+}
+
+export interface NotionSelectOption {
+    id: string;
+    name: string;
+    color: string;
 }
 
 export interface NotionPage {
