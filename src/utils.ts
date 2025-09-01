@@ -15,19 +15,19 @@ export function convertNotionColorToGitHub(notionColor: string): string {
     // GitHub uses hex colors without the # prefix
     const colorMap: Record<string, string> = {
         // Default colors in Notion
-        'blue': '0075ca',
-        'brown': 'a52a2a',
-        'default': 'ededed',
-        'gray': '949494',
-        'green': '0e8a16',
-        'orange': 'ff6b00',
-        'pink': 'ff5eb4',
-        'purple': '6f42c1',
-        'red': 'ca3431',
-        'yellow': 'fbca04',
+        blue: "0075ca",
+        brown: "a52a2a",
+        default: "ededed",
+        gray: "949494",
+        green: "0e8a16",
+        orange: "ff6b00",
+        pink: "ff5eb4",
+        purple: "6f42c1",
+        red: "ca3431",
+        yellow: "fbca04",
     };
-    
-    return colorMap[notionColor.toLowerCase()] || 'ededed'; // Default to light gray if color not found
+
+    return colorMap[notionColor.toLowerCase()] || "ededed"; // Default to light gray if color not found
 }
 
 export function buildBranchPrefix(

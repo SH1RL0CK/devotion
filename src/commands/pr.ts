@@ -209,17 +209,29 @@ async function mrMain(): Promise<void> {
             // Get the database schema to find the color for this type
             let labelColor = "ededed"; // Default light gray color
             try {
-                const databaseSchema = await notionService.getDatabaseSchema(localConfig.ticketsDatabaseId);
-                const typeColor = notionService.findSelectOptionColor(databaseSchema, NOTION_PROPERTY_TYPE, ticket.type);
-                
+                const databaseSchema = await notionService.getDatabaseSchema(
+                    localConfig.ticketsDatabaseId
+                );
+                const typeColor = notionService.findSelectOptionColor(
+                    databaseSchema,
+                    NOTION_PROPERTY_TYPE,
+                    ticket.type
+                );
+
                 if (typeColor) {
                     // Convert Notion color to GitHub color format
-                    const { convertNotionColorToGitHub } = await import("../utils.js");
+                    const { convertNotionColorToGitHub } = await import(
+                        "../utils.js"
+                    );
                     labelColor = convertNotionColorToGitHub(typeColor);
                 }
             } catch (error) {
                 // If there's an error getting the color, we'll use the default
-                console.log(chalk.yellow(`Could not fetch color for type ${ticket.type}, using default`));
+                console.log(
+                    chalk.yellow(
+                        `Could not fetch color for type ${ticket.type}, using default`
+                    )
+                );
             }
 
             // Check if label already exists

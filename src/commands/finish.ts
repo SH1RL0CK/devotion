@@ -199,11 +199,28 @@ export async function finishCommand(): Promise<void> {
         const defaultCommitBody =
             formattedCommits || "* No commit messages found";
 
-        // Let user edit the commit message body
-        const commitBody = await editor({
-            message: "Edit the squash commit message body:",
-            default: defaultCommitBody,
-        });
+        // Display the commit body to the user
+        console.log(chalk.blue("\n📝 Squash commit body:"));
+        console.log(chalk.white(defaultCommitBody));
+        console.log(chalk.blue("\n---"));
+
+        // Ask if the user wants to edit the commit body
+        const { wantToEdit } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "wantToEdit",
+                message: "Do you want to edit the squash commit body?",
+                default: false,
+            },
+        ]);
+
+        // Let user edit the commit message body if they want to
+        const commitBody = wantToEdit
+            ? await editor({
+                  message: "Edit the squash commit message body:",
+                  default: defaultCommitBody,
+              })
+            : defaultCommitBody;
 
         // 14. Merge the PR with squash
         const commitTitle = `${prDetails.title} (#${prDetails.number})`; // Add PR number to commit title
