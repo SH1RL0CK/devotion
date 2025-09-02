@@ -10,6 +10,7 @@ import {
     GITHUB_HTTPS_PREFIX,
     GITHUB_SSH_PATTERN,
     GITHUB_SSH_PREFIX,
+    GITHUB_STANDARD_LABELS,
     PR_STATE_OPEN,
 } from "../constants.js";
 import {
@@ -331,7 +332,8 @@ export class GitHubService {
         owner: string,
         repo: string,
         name: string,
-        color: string = "ededed" // Default light gray color if none provided
+        color: string = "ededed", // Default light gray color if none provided
+        description?: string // Optional description for the label
     ): Promise<boolean> {
         try {
             await this.octokit.rest.issues.createLabel({
@@ -339,11 +341,51 @@ export class GitHubService {
                 repo,
                 name,
                 color: color.replace(/^#/, ""), // Remove # if present
+                description, // Add description if provided
             });
 
             return true;
         } catch (error) {
             console.error("Error creating label:", error);
+            return false;
+        }
+    }
+
+    async getAllLabels(
+        owner: string,
+        repo: string
+    ): Promise<Array<{ id: number; name: string }>> {
+        try {
+            const response = await this.octokit.rest.issues.listLabelsForRepo({
+                owner,
+                repo,
+                per_page: 100,
+            });
+
+            return response.data.map((label: any) => ({
+                id: label.id,
+                name: label.name,
+            }));
+        } catch (error) {
+            console.error("Error getting labels:", error);
+            return [];
+        }
+    }
+
+    async deleteLabel(
+        owner: string,
+        repo: string,
+        name: string
+    ): Promise<boolean> {
+        try {
+            await this.octokit.rest.issues.deleteLabel({
+                owner,
+                repo,
+                name,
+            });
+            return true;
+        } catch (error) {
+            console.error(`Error deleting label ${name}:`, error);
             return false;
         }
     }
@@ -365,6 +407,34 @@ export class GitHubService {
             return true;
         } catch (error) {
             console.error("Error adding label to PR:", error);
+            return false;
+        }
+    }
+
+    async setupStandardLabels(owner: string, repo: string): Promise<boolean> {
+        try {
+            // Delete all existing labels
+            const existingLabels = await this.getAllLabels(owner, repo);
+            for (const label of existingLabels) {
+                await this.deleteLabel(owner, repo, label.name);
+                console.log(`Deleted label: ${label.name}`);
+            }
+
+            // Create all standard labels from constants
+            for (const label of GITHUB_STANDARD_LABELS) {
+                await this.createLabel(
+                    owner,
+                    repo,
+                    label.name,
+                    label.color,
+                    label.description
+                );
+                console.log(`Created label: ${label.name}`);
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Error setting up standard labels:", error);
             return false;
         }
     }

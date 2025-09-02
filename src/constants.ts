@@ -48,6 +48,16 @@ export const MSG_PROJECT_NOT_INITIALIZED =
     "❌ Project not initialized. Run 'devotion init' first.";
 export const MSG_FAILED_READ_CONFIG =
     "❌ Failed to read project configuration.";
+export const MSG_SETUP_GITHUB_LABELS =
+    "Do you want to set up standard GitHub labels for this project?";
+export const MSG_SETTING_UP_GITHUB_LABELS =
+    "ℹ️ Setting up standard GitHub labels...";
+export const MSG_GITHUB_LABELS_SETUP_COMPLETE =
+    "✅ GitHub labels set up successfully!";
+export const MSG_GITHUB_LABELS_SETUP_FAILED =
+    "❌ Failed to set up GitHub labels:";
+export const MSG_GETTING_REPO_INFO =
+    "ℹ️ Getting GitHub repository information...";
 export const MSG_NOT_GIT_REPOSITORY =
     "❌ Current directory is not a git repository.";
 export const MSG_GLOBAL_CONFIG_NOT_FOUND =
@@ -217,5 +227,54 @@ export const MSG_SET_TO_DONE = "set to 🚀 Done";
 export const ERROR_MERGE_PR = "Failed to merge pull request: ";
 export const ERROR_DELETING_BRANCH = "Failed to delete branch: ";
 export const ERROR_UPDATING_TICKET = "Failed to update ticket status: ";
+
+// Standard GitHub labels
+export const GITHUB_STANDARD_LABELS = [
+    {
+        name: "🐛 Bug",
+        color: "d73a4a",
+        description: "Something isn't working",
+    },
+    {
+        name: "📚 Documentation",
+        color: "0075ca",
+        description: "Improvements or additions to documentation",
+    },
+    {
+        name: "🔁 Duplicate",
+        color: "cfd3d7",
+        description: "This issue or pull request already exists",
+    },
+    {
+        name: "✨ Feature",
+        color: "0e8a16",
+        description: "New feature or request",
+    },
+    {
+        name: "🌱 Good First Issue",
+        color: "7057ff",
+        description: "Good for newcomers",
+    },
+    {
+        name: "🙋 Help Wanted",
+        color: "008672",
+        description: "Extra attention is needed",
+    },
+    {
+        name: "⚠️ Invalid",
+        color: "e4e669",
+        description: "This doesn't seem right",
+    },
+    {
+        name: "❓ Question",
+        color: "d876e3",
+        description: "Further information is requested",
+    },
+    {
+        name: "🚫 Won't Fix",
+        color: "000000",
+        description: "This will not be worked on",
+    },
+];
 
 export {};

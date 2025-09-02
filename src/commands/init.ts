@@ -12,6 +12,9 @@ import {
     MSG_FAILED_UPDATE_CONFIG,
     MSG_FETCHING_PROJECTS,
     MSG_FINDING_TICKETS_DB,
+    MSG_GETTING_REPO_INFO,
+    MSG_GITHUB_LABELS_SETUP_COMPLETE,
+    MSG_GITHUB_LABELS_SETUP_FAILED,
     MSG_GLOBAL_CONFIG_NOT_FOUND,
     MSG_INITIALIZATION_FAILED,
     MSG_INITIALIZING_PROJECT,
@@ -25,11 +28,15 @@ import {
     MSG_NO_UNIQUE_ID_PREFIX,
     MSG_PROJECT_ALREADY_INITIALIZED,
     MSG_PROJECT_CONFIG_UPDATED,
+    MSG_SETTING_UP_GITHUB_LABELS,
+    MSG_SETUP_GITHUB_LABELS,
     PROMPT_DEVELOPMENT_BRANCH,
     PROMPT_SELECT_PROJECT,
 } from "../constants.js";
 import { LocalConfig } from "../models/config.js";
 import { NotionProject } from "../models/notion.js";
+import { GitService } from "../services/git.service.js";
+import { GitHubService } from "../services/github.service.js";
 import { GlobalConfigService } from "../services/global-config.service.js";
 import { LocalConfigService } from "../services/local-config.service.js";
 import { NotionService } from "../services/notion.service.js";
@@ -162,6 +169,74 @@ async function initMain(): Promise<void> {
         console.log(chalk.green(`   Project: ${selectedProject.title}`));
         console.log(chalk.green(`   Ticket prefix: ${ticketPrefix}`));
         console.log(chalk.green(`   Development branch: ${developmentBranch}`));
+
+        // Ask user if they want to set up GitHub labels
+        const { setupGitHubLabels } = await inquirer.prompt([
+            {
+                type: "confirm",
+                name: "setupGitHubLabels",
+                message: MSG_SETUP_GITHUB_LABELS,
+                default: true,
+            },
+        ]);
+
+        if (setupGitHubLabels) {
+            try {
+                // Initialize Git and GitHub services
+                const gitService = new GitService();
+                const isGitRepo = await gitService.isGitRepository();
+
+                if (!isGitRepo) {
+                    console.log(
+                        chalk.yellow(
+                            "⚠️ Not a Git repository. Skipping GitHub labels setup."
+                        )
+                    );
+                    return;
+                }
+
+                const githubService = new GitHubService(
+                    globalConfig.githubApiKey
+                );
+
+                // Get repository information
+                console.log(chalk.blue(MSG_GETTING_REPO_INFO));
+                const repoInfo = await githubService.getRepositoryInfo();
+
+                if (!repoInfo) {
+                    console.log(
+                        chalk.yellow(
+                            "⚠️ Could not determine GitHub repository. Skipping labels setup."
+                        )
+                    );
+                    return;
+                }
+
+                // Set up standard labels
+                console.log(chalk.blue(MSG_SETTING_UP_GITHUB_LABELS));
+                const success = await githubService.setupStandardLabels(
+                    repoInfo.owner,
+                    repoInfo.repo
+                );
+
+                if (success) {
+                    console.log(chalk.green(MSG_GITHUB_LABELS_SETUP_COMPLETE));
+                } else {
+                    console.log(chalk.red(MSG_GITHUB_LABELS_SETUP_FAILED));
+                }
+            } catch (error) {
+                console.log(
+                    chalk.red(
+                        `${MSG_GITHUB_LABELS_SETUP_FAILED} ${
+                            error instanceof Error
+                                ? error.message
+                                : DEFAULT_UNKNOWN_ERROR
+                        }`
+                    )
+                );
+                // Continue without failing the whole initialization
+            }
+        }
     } catch (error) {
         console.log(
             chalk.red(
