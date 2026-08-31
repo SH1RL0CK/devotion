@@ -6,6 +6,7 @@ import { registerFinishCommand } from "./commands/finish.js";
 import { registerInitCommand } from "./commands/init.js";
 import { registerPrCommand } from "./commands/pr.js";
 import { registerSetupCommand } from "./commands/setup.js";
+import { registerTicketCommand } from "./commands/ticket.js";
 
 const program = new Command();
 
@@ -22,5 +23,6 @@ registerInitCommand(program);
 registerDevCommand(program);
 registerPrCommand(program);
 registerFinishCommand(program);
+registerTicketCommand(program);
 
 program.parse();

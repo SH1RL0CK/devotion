@@ -157,6 +157,34 @@ This command will:
 3. Create a GitHub pull request
 4. Update the Notion ticket with the PR link
 
+### View Ticket Content
+
+Read and display the contents and description of a ticket:
+
+```bash
+# View ticket associated with the current branch
+devotion ticket
+
+# View a specific ticket by ID
+devotion ticket PROJ-123
+
+# Aliases: show, view
+devotion show PROJ-123
+devotion view
+
+# Options:
+# -j, --json: Output as JSON
+# -r, --raw:  Output in plain text/markdown without ANSI colors
+# -o, --open: Open ticket directly in browser
+devotion ticket PROJ-123 --open
+```
+
+This command will:
+
+1. Identify the ticket (from argument, current Git branch, or interactive selection)
+2. Fetch ticket properties (Title, Status, Type, Assignee, Notion URL, PR URL)
+3. Recursively fetch and render Notion blocks (Headings, Paragraphs, Lists, To-dos, Code blocks, Quotes, Callouts, etc.) formatted for the terminal
+
 ### Finish Work
 
 Complete your work and clean up:
@@ -181,6 +209,7 @@ devotion/
 │   │   ├── setup.ts       # Global configuration
 │   │   ├── init.ts        # Project initialization
 │   │   ├── dev.ts         # Development workflow
+│   │   ├── ticket.ts      # Ticket content viewer
 │   │   ├── pr.ts          # Pull request creation
 │   │   └── finish.ts      # Work completion
 │   ├── services/          # External service integrations

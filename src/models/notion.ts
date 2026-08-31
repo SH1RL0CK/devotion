@@ -11,6 +11,10 @@ export interface NotionTicket {
     status: string;
     type?: string;
     ticketId?: string; // e.g., "CAGW-19"
+    assignee?: string;
+    githubPrUrl?: string;
+    url?: string;
+    description?: string;
 }
 
 export interface NotionDatabase {

@@ -214,22 +214,66 @@ export class NotionService {
         }
     }
 
+    async getAllTickets(databaseId: string): Promise<NotionTicket[]> {
+        try {
+            const tickets: NotionTicket[] = [];
+            let cursor: string | undefined;
+
+            do {
+                const response: any = await this.client.databases.query({
+                    database_id: databaseId,
+                    start_cursor: cursor,
+                });
+
+                tickets.push(
+                    ...response.results.map((page: any) =>
+                        this.mapPageToTicket(page)
+                    )
+                );
+
+                cursor = response.has_more
+                    ? response.next_cursor ?? undefined
+                    : undefined;
+            } while (cursor);
+
+            return tickets;
+        } catch (error) {
+            throw new Error(
+                `Failed to fetch tickets: ${
+                    error instanceof Error
+                        ? error.message
+                        : DEFAULT_UNKNOWN_ERROR
+                }`
+            );
+        }
+    }
+
     async findTicketByTicketId(
         databaseId: string,
         ticketId: string
     ): Promise<NotionTicket | null> {
         try {
-            // Get all tickets from the database and find the one with matching ticketId
-            const response = await this.client.databases.query({
-                database_id: databaseId,
-            });
+            const normalized = ticketId.trim().toLowerCase();
+            const tickets = await this.getAllTickets(databaseId);
 
-            const tickets = response.results.map((page) =>
-                this.mapPageToTicket(page as any)
-            );
-
+            // Match exact ticketId, case-insensitive, or numeric suffix, or page id
             return (
-                tickets.find((ticket) => ticket.ticketId === ticketId) || null
+                tickets.find((ticket) => {
+                    if (!ticket.ticketId) {
+                        return (
+                            ticket.id.replace(/-/g, "").toLowerCase() ===
+                            normalized.replace(/-/g, "")
+                        );
+                    }
+                    const tId = ticket.ticketId.toLowerCase();
+                    return (
+                        tId === normalized ||
+                        tId === `${normalized}` ||
+                        ticket.id.replace(/-/g, "").toLowerCase() ===
+                            normalized.replace(/-/g, "") ||
+                        tId.endsWith(`-${normalized}`)
+                    );
+                }) || null
             );
         } catch (error) {
             throw new Error(
@@ -239,6 +283,56 @@ export class NotionService {
                         : DEFAULT_UNKNOWN_ERROR
                 }`
             );
+        }
+    }
+
+    async getTicketPage(pageId: string): Promise<NotionTicket | null> {
+        try {
+            const page = await this.client.pages.retrieve({
+                page_id: pageId,
+            });
+            return this.mapPageToTicket(page as any);
+        } catch {
+            return null;
+        }
+    }
+
+    async getPageBlocks(
+        blockId: string,
+        depth: number = 0,
+        maxDepth: number = 3
+    ): Promise<any[]> {
+        try {
+            const blocks: any[] = [];
+            let cursor: string | undefined;
+
+            do {
+                const response: any = await this.client.blocks.children.list({
+                    block_id: blockId,
+                    start_cursor: cursor,
+                    page_size: 100,
+                });
+
+                for (const block of response.results) {
+                    if (block.has_children && depth < maxDepth) {
+                        const children = await this.getPageBlocks(
+                            block.id,
+                            depth + 1,
+                            maxDepth
+                        );
+                        block.children = children;
+                    }
+                    blocks.push(block);
+                }
+
+                cursor = response.has_more
+                    ? response.next_cursor ?? undefined
+                    : undefined;
+            } while (cursor);
+
+            return blocks;
+        } catch (error) {
+            return [];
         }
     }
 
@@ -386,12 +480,57 @@ export class NotionService {
             }
         }
 
+        // Extract assignee
+        let assignee: string | undefined;
+        if (
+            properties[NOTION_PROPERTY_ASSIGN]?.type === "people" &&
+            Array.isArray(properties[NOTION_PROPERTY_ASSIGN].people) &&
+            properties[NOTION_PROPERTY_ASSIGN].people.length > 0
+        ) {
+            assignee = properties[NOTION_PROPERTY_ASSIGN].people
+                .map((person: any) => person.name || person.id)
+                .join(", ");
+        }
+
+        // Extract GitHub Pull Request URL
+        let githubPrUrl: string | undefined;
+        if (
+            properties[NOTION_PROPERTY_GITHUB_PULL_REQUEST]?.type === "url" &&
+            properties[NOTION_PROPERTY_GITHUB_PULL_REQUEST].url
+        ) {
+            githubPrUrl = properties[NOTION_PROPERTY_GITHUB_PULL_REQUEST].url;
+        }
+
+        // Extract description from rich_text property if present
+        let description: string | undefined;
+        for (const [key, prop] of Object.entries(properties)) {
+            const lowerKey = key.toLowerCase();
+            if (
+                (lowerKey === "description" || lowerKey === "beschreibung") &&
+                (prop as any).type === "rich_text" &&
+                Array.isArray((prop as any).rich_text) &&
+                (prop as any).rich_text.length > 0
+            ) {
+                description = (prop as any).rich_text
+                    .map((t: any) => t.plain_text)
+                    .join("");
+                break;
+            }
+        }
+
+        // Notion URL
+        const pageUrl = page.url || `https://notion.so/${page.id.replace(/-/g, "")}`;
+
         return {
             id: page.id,
             title,
             status,
             type,
             ticketId,
+            assignee,
+            githubPrUrl,
+            url: pageUrl,
+            description,
         };
     }
 

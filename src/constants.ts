@@ -213,6 +213,12 @@ export const MSG_ADDING_LABEL = "ℹ️  Adding label: ";
 export const MSG_CREATING_LABEL = "ℹ️  Creating label: ";
 export const MSG_LABEL_ADDED = "ℹ️  Label added: ";
 
+// Ticket viewer messages
+export const MSG_FETCHING_TICKET = "ℹ️  Fetching ticket details from Notion...";
+export const MSG_TICKET_NOT_FOUND = "❌ Could not find ticket: ";
+export const MSG_NO_TICKETS_AVAILABLE = "⚠️  No tickets found in the project database.";
+export const PROMPT_SELECT_TICKET_TO_VIEW = "Select a ticket to view:";
+
 // Finish command messages
 export const MSG_NO_CURRENT_BRANCH = "❌ Could not determine current branch";
 export const MSG_COULD_NOT_EXTRACT_TICKET_ID_FINISH =
